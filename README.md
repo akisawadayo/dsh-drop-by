@@ -73,7 +73,7 @@ powershell -ExecutionPolicy Bypass -File install.ps1   # Windows 老办法
 ## 卸
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "<插件目录>\uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File "<插件目录>/uninstall.ps1"
 ```
 
 删 junction、摘掉依赖和 bundles 项、删 patch 段。`~/.dsh/drop-by-config.json` 留着，重装回来设置还在。
@@ -138,11 +138,11 @@ powershell -ExecutionPolicy Bypass -File "<插件目录>\uninstall.ps1"
 ## 自测与救援
 
 ```powershell
-node tests\smoke.mjs        # 宿主半边：路由、定时器、手动试一次
-node tests\client-smoke.mjs # 网页半边：模块加载、Section 注册
-node tests\full.mjs         # 全路径：14 组，含抓回复拆条发 QQ、冷却、上限、串会话、断线重连、手动不占额度
-node tests\edge.mjs         # 边界：11 组，坏配置 / 坏状态 / followup 抛错 / 并发 / 坏地址
-node tests\qq-probe.mjs     # 只问 OneBot「我是谁」，不发消息
+node tests/smoke.mjs        # 宿主半边：路由、定时器、手动试一次
+node tests/client-smoke.mjs # 网页半边：模块加载、Section 注册
+node tests/full.mjs         # 全路径：14 组，含抓回复拆条发 QQ、冷却、上限、串会话、断线重连、手动不占额度
+node tests/edge.mjs         # 边界：11 组，坏配置 / 坏状态 / followup 抛错 / 并发 / 坏地址
+node tests/qq-probe.mjs     # 只问 OneBot「我是谁」，不发消息（需要 OneBot 正在跑）
 ```
 
 > 作者本地还有一份排障脚本（查 BOM、查 profile、查接口清单），不随包发布。

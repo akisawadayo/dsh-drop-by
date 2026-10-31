@@ -7,6 +7,9 @@
  *   - 假 WebSocket（globalThis.WebSocket 换掉），能看见发出去的 OneBot 报文
  *   - DSH_HOME 指向临时目录，配置和状态都在里面
  */
+// 强制用内置 WebSocket（测试里换成了假的），别去借宿主的 ws 包
+process.env.DROPBY_NO_WS = '1'
+
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'

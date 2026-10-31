@@ -4,6 +4,9 @@
  *
  * 验的是坏输入不把插件搞崩、配置夹紧、状态文件坏了能自愈、并发不出事。
  */
+// 强制用内置 WebSocket（测试里换成了假的），别去借宿主的 ws 包
+process.env.DROPBY_NO_WS = '1'
+
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
