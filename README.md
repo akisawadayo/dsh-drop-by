@@ -140,17 +140,10 @@ powershell -ExecutionPolicy Bypass -File "<插件目录>\uninstall.ps1"
 ```powershell
 node tests\smoke.mjs        # 宿主半边：路由、定时器、手动试一次
 node tests\client-smoke.mjs # 网页半边：模块加载、Section 注册
-node tests\full.mjs         # 全路径：14 组
-node tests\edge.mjs         # 边界：11 组
-node tests\qq-probe.mjs     # 只问 OneBot「我是谁」，不发消息
-```
-
-> 作者本地还有一份排障脚本（查 BOM、查 profile、查接口清单），不随包发布。
-node tests\smoke.mjs        # 宿主半边：路由、定时器、手动试一次
-node tests\client-smoke.mjs # 网页半边：模块加载、Section 注册
 node tests\full.mjs         # 全路径：14 组，含抓回复拆条发 QQ、冷却、上限、串会话、断线重连、手动不占额度
 node tests\edge.mjs         # 边界：11 组，坏配置 / 坏状态 / followup 抛错 / 并发 / 坏地址
 node tests\qq-probe.mjs     # 只问 OneBot「我是谁」，不发消息
 ```
 
-能自动修的：BOM 一律剥掉；`package.json` 坏了从 `.bak-dropby-*` 恢复。它不重启、不关机。
+> 作者本地还有一份排障脚本（查 BOM、查 profile、查接口清单），不随包发布。
+> 它能自动修两样：BOM 一律剥掉；`package.json` 坏了从 `.bak-dropby-*` 恢复。它不重启、不关机。
