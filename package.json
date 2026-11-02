@@ -1,6 +1,6 @@
 {
   "name": "dsh-drop-by",
-  "version": "1.4.1",
+  "version": "1.4.4",
   "description": "到点了，她自己来找你说话：按固定/随机间隔往指定会话送一条「她自己的念头」，由 DSH 自己开一轮生成真正的聊天内容；可选把这一轮她真说的话一条一条发到 QQ 私聊。设置页在 DSH 设置的「鱼的QQ敲门」里。",
   "type": "module",
   "main": "lib/host.js",
