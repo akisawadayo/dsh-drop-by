@@ -79,6 +79,28 @@ powershell -ExecutionPolicy Bypass -File "<插件目录>/uninstall.ps1"
 删 junction、摘掉依赖和 bundles 项、删 patch 段。`~/.dsh/drop-by-config.json` 留着，重装回来设置还在。
 同样不重启 —— 重启 DSH 之后才真正下线。
 
+## 她自己能写念头
+
+插件注册了一个工具 `drop_by_add_line`。她在会话里想「下次找他聊什么」，可以直接把那句写进念头池：
+
+```
+drop_by_add_line({ text: "想问问他今天累不累" })
+```
+
+去重；池子最多留 30 句，超了把最老的挤掉。设置页里照样能手写、手改。
+
+写不写由她自己判断，插件不强迫。想让她更常写，可以切到 P2：
+
+| 模式 | 意思 |
+| --- | --- |
+| ree（P1，默认） | 她自己决定写不写，插件一句都不提 |
+| 
+udge（P2） | 每次开口时补一句「想到下次聊什么就记进来」 |
+
+两个互斥，只能选一个。
+
+以前池子只能你手动填，现在她自己能记。
+
 ## 设置
 
 配置文件 `~/.dsh/drop-by-config.json`，也可以在设置页里改（改完自动重挂间隔，不用重启）。
@@ -123,7 +145,7 @@ powershell -ExecutionPolicy Bypass -File "<插件目录>/uninstall.ps1"
 | `qqTarget` | 发给哪个 QQ 号 |
 | `qqMode` | `reply` = 发她真说的话（推荐）；`line` = 直接把念头那句发过去 |
 
-设置页上有个「发一条到我 QQ」的按钮，只测通路、不碰会话、不花 token。
+设置页上有个「发QQ消息测通路联通」的按钮，只测通路、不碰会话、不花 token。
 
 实现上**没有依赖别的插件**：用 Node 自带的内置 WebSocket 直连 OneBot，每个请求带自己的 echo 认回包，
 空闲两分钟自动断开。不 import `ws` —— 插件目录的模块解析链里没有那个包。

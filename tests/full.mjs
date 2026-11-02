@@ -89,6 +89,7 @@ writeCfg()
 
 // ---------- 假 ctx ----------
 const routes = new Map()
+const registeredTools = []
 const timers = []
 const followed = []
 const handlers = {}
@@ -134,6 +135,12 @@ const ctx = {
     register: (r) => {
       routes.set(r.path, r)
       return () => routes.delete(r.path)
+    },
+  },
+  tools: {
+    register: (def) => {
+      registeredTools.push(def)
+      return () => {}
     },
   },
   get: () => undefined,
@@ -349,6 +356,118 @@ const check = (cond, msg) => {
   check(s2.state.count === before, `14 手动试一次不该计入额度（${before} -> ${s2.state.count}）`)
 }
 
+// ================= 15. 念头原文不能当成「说的话」发出去 =================
+{
+  sentFrames.length = 0
+  await saveCfgViaApi({ qqOn: true, qqMode: 'reply', dryRun: false })
+  await fireNow()
+  await emit('turn/start', { turn: 't7' })
+  await emit('assistant/message', { message: { content: [{ type: 'text', text: '测试念头\n喂，在吗' }] } })
+  await emit('turn/end', { turn: 't7', reason: { kind: 'done' } })
+  await sleep(900)
+  const says15 = sentFrames.filter((f) => f.action === 'send_private_msg')
+  check(says15.length === 1, `15 念头原文那行该被丢掉，只该发 1 条，实际 ${says15.length}`)
+  check(says15[0] && says15[0].params.message === '喂，在吗', '15 发出去的内容不对：' + (says15[0] && says15[0].params.message))
+}
+
+// ================= 16. 她自己能往念头池里写 =================
+{
+  check(registeredTools.length === 1, `16 应该注册 1 个工具，实际 ${registeredTools.length}`)
+  const tool = registeredTools[0]
+  if (!tool) {
+    check(false, '16 没有工具')
+  } else {
+    check(tool.name === 'drop_by_add_line', '16 工具名不对：' + tool.name)
+    check(typeof tool.execute === 'function', '16 没有 execute')
+    check(!!tool.output && typeof tool.output.render === 'function', '16 没有 output.render')
+
+    const before = (await stateOf()).cfg.lines.length
+    const r1 = await tool.execute({ text: '想问他今天累不累' })
+    check(r1.ok === true, '16 加一句失败了')
+    const after = (await stateOf()).cfg.lines
+    check(after.length === before + 1, `16 池子应该多一句（${before} -> ${after.length}）`)
+    check(after.includes('想问他今天累不累'), '16 加进去的那句没找到')
+
+    // 重复加不该变多
+    const r2 = await tool.execute({ text: '想问他今天累不累' })
+    const again = (await stateOf()).cfg.lines
+    check(again.length === after.length, '16 重复加了同一句，池子却变长了')
+    check(r2.count === again.length, '16 返回的条数不对')
+
+    // 空的不收
+    const r3 = await tool.execute({ text: '   ' })
+    check(r3.ok === false, '16 空白也该拒绝')
+
+    // 上限 30
+    for (let i = 0; i < 40; i++) await tool.execute({ text: '凑数念头 ' + i })
+    const capped = (await stateOf()).cfg.lines
+    check(capped.length <= 30, `16 池子没夹住上限，现在 ${capped.length} 句`)
+    check(capped[capped.length - 1] === '凑数念头 39', '16 夹的时候应该留最新的')
+  }
+}
+
+// ================= 17. 设置页那个「测一下她自己写念头」按钮 =================
+{
+  const callLineTest = async () => {
+    let out = ''
+    await routes.get('/dsh-drop-by/api/line-test').handler(
+      { method: 'POST', headers: {} },
+      { writeHead: () => {}, end: (c) => (out += c) },
+    )
+    return JSON.parse(out)
+  }
+  // 先把池子清干净（上一组把它塞到 30 句了，再加一句会被上限挤掉，看不出变化）
+  await saveCfgViaApi({ lines: ['测试念头'] })
+  const before = (await stateOf()).cfg.lines.length
+  const r1 = await callLineTest()
+  check(r1.ok === true, '17 按钮调用失败：' + (r1 && r1.error))
+  check(r1.count === before + 1, `17 池子应该多一句（${before} -> ${r1.count}）`)
+  check(r1.text === '（测试）想问问你在干嘛', '17 写进去的那句不对：' + r1.text)
+  // 连点第二次：去重，不该再长
+  const r2 = await callLineTest()
+  check(r2.ok === true && r2.count === r1.count, '17 连点两次池子却变长了')
+}
+
+// ================= 18. P1 / P2 二选一，不能同时开 =================
+{
+  // 前面几组 fire 太多次，当天的额度（5）早用完了，先抬上去，不然这里根本发不出去
+  await saveCfgViaApi({ dailyCap: 999, dryRun: false, qqOn: false, lineWriteMode: 'free' })
+  await fireNow()
+  const msgFree = followed[followed.length - 1]
+  const textFree = String(msgFree.content[0].text)
+  check(!textFree.includes('drop_by_add_line'), '18 P1 不该出现「记进念头池」的提醒')
+  check(textFree.trim().length > 0, '18 P1 内容空的')
+
+  await saveCfgViaApi({ lineWriteMode: 'nudge' })
+  await fireNow()
+  const msgNudge = followed[followed.length - 1]
+  const textNudge = String(msgNudge.content[0].text)
+  check(textNudge.includes('drop_by_add_line'), '18 P2 应该补上「记进念头池」的提醒')
+  check(textNudge.trim().length > textFree.trim().length, '18 P2 应该比 P1 更长（多一段提醒）')
+
+  // 互斥：存一个就是那个，不会两个都开
+  const s1 = await stateOf()
+  check(s1.cfg.lineWriteMode === 'nudge', '18 模式没存上：' + s1.cfg.lineWriteMode)
+  await saveCfgViaApi({ lineWriteMode: 'free' })
+  const s2 = await stateOf()
+  check(s2.cfg.lineWriteMode === 'free', '18 切回 P1 失败：' + s2.cfg.lineWriteMode)
+  await saveCfgViaApi({ qqOn: true, lineWriteMode: 'free' })
+}
+
+// ================= 19. 选了就固定用那个；不选就挑一个活着的 =================
+{
+  await saveCfgViaApi({ dailyCap: 999, dryRun: false, qqOn: false, targets: [fakeAgent.id] })
+  const before19 = followed.length
+  await fireNow()
+  check(followed.length === before19 + 1, '19 选了会话却没发出去')
+
+  await saveCfgViaApi({ targets: [] })
+  const before20 = followed.length
+  await fireNow()
+  check(followed.length === before20 + 1, '19 不选时该挑一个活着的')
+
+  await saveCfgViaApi({ targets: [fakeAgent.id] })
+}
 rmSync(sandbox, { recursive: true, force: true })
 
 if (problems.length) {
@@ -356,6 +475,6 @@ if (problems.length) {
   for (const p of problems) console.log('   - ' + p)
   process.exit(1)
 }
-console.log('✅ 全过：14 组（配置往返 / 正常触发 / 抓回复拆条发 QQ / 无起点不发 / 冷却 / 上限 / 安静 / 总开关 / 演练 / QQ 关 / 没说话 / 串会话 / 断线重连 / 手动不占额度）')
+console.log('✅ 全过：19 组（配置往返 / 正常触发 / 抓回复拆条发 QQ / 无起点不发 / 冷却 / 上限 / 安静 / 总开关 / 演练 / QQ 关 / 没说话 / 串会话 / 断线重连 / 手动不占额度 / 念头原文不转发 / 她往池子里写 / 按钮测她写念头 / P1P2 互斥 / 选目标）')
 // 假 WebSocket 和定时器还挂着，不显式退出进程不会自己结束
 process.exit(0)
